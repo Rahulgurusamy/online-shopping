@@ -1,0 +1,310 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'dart:math';
+import 'package:online_shopping/providers/product_provider.dart';
+
+class ExplorePage extends StatefulWidget {
+  @override
+  _ExplorePageState createState() => _ExplorePageState();
+}
+
+class _ExplorePageState extends State<ExplorePage> {
+  final TextEditingController _searchController = TextEditingController();
+  String selectedCategory = 'All';
+  String selectedSortOption = 'Relevance';
+  final _carouselController = PageController();
+
+  @override
+  Widget build(BuildContext context) {
+    final productProvider = Provider.of<ProductProvider>(context);
+    List<dynamic> filteredProducts = selectedCategory == 'All'
+        ? List.from(productProvider.filteredProducts)
+        : productProvider.filteredProducts
+            .where((product) => product['category'] == selectedCategory)
+            .toList();
+
+    if (selectedSortOption == 'Price') {
+      filteredProducts.sort((a, b) => a['price'].compareTo(b['price']));
+    } else if (selectedSortOption == 'Popularity') {
+    }
+
+    filteredProducts.shuffle(Random());
+
+    List<dynamic> featuredProducts = productProvider.featuredProducts;
+
+    final screenSize = MediaQuery.of(context).size;
+    final isPortrait = MediaQuery.of(context).orientation == Orientation.portrait;
+
+    double carouselHeight = isPortrait ? 150 : 120;
+    double searchBarHeight = 50;
+    double categoryChipHeight = 40;
+    double fontSize = isPortrait ? 16 : 14;
+    int crossAxisCount = screenSize.width > 600 ? 3 : 2;
+
+    return Scaffold(
+      appBar: AppBar(
+        bottom: PreferredSize(
+          preferredSize: Size.fromHeight(carouselHeight + searchBarHeight + categoryChipHeight),
+          child: Column(
+            children: [
+              Container(
+                height: carouselHeight,
+                child: PageView(
+                  controller: _carouselController,
+                  children: [
+                    Image.asset(
+                      'assets/banner1.jpg',
+                      fit: BoxFit.cover,
+                    ),
+                    Image.asset(
+                      'assets/banner2.jpg',
+                      fit: BoxFit.cover,
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: EdgeInsets.all(screenSize.width * 0.02),
+                child: TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: 'Search products...',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(30.0),
+                      borderSide: BorderSide.none,
+                    ),
+                    filled: true,
+                    fillColor: Colors.white,
+                    prefixIcon: Icon(Icons.search, size: fontSize),
+                    suffixIcon: IconButton(
+                      icon: Icon(Icons.clear, size: fontSize),
+                      onPressed: () {
+                        _searchController.clear();
+                        productProvider.searchProducts('');
+                      },
+                    ),
+                  ),
+                  onChanged: (value) {
+                    productProvider.searchProducts(value);
+                  },
+                ),
+              ),
+              Container(
+                height: categoryChipHeight,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: ListView(
+                        scrollDirection: Axis.horizontal,
+                        children: [
+                          _buildCategoryChip('All'),
+                          _buildCategoryChip('Electronics'),
+                          _buildCategoryChip('Clothing'),
+                          _buildCategoryChip('Home'),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: DropdownButton<String>(
+                        value: selectedSortOption,
+                        items: <String>['Relevance', 'Price', 'Popularity']
+                            .map((String value) {
+                          return DropdownMenuItem<String>(
+                            value: value,
+                            child: Text(value, style: TextStyle(fontSize: fontSize)),
+                          );
+                        }).toList(),
+                        onChanged: (String? newValue) {
+                          setState(() {
+                            selectedSortOption = newValue!;
+                          });
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            if (featuredProducts.isNotEmpty)
+              Padding(
+                padding: EdgeInsets.all(screenSize.width * 0.02),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Featured Products',
+                      style: TextStyle(
+                        fontSize: fontSize + 2,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(
+                      height: 200,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: featuredProducts.length,
+                        itemBuilder: (ctx, index) {
+                          final product = featuredProducts[index];
+                          return Container(
+                            width: screenSize.width * 0.4,
+                            margin: EdgeInsets.symmetric(horizontal: screenSize.width * 0.02),
+                            child: Card(
+                              elevation: 5,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(15),
+                              ),
+                              child: InkWell(
+                                onTap: () {},
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    Expanded(
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.vertical(
+                                          top: Radius.circular(15),
+                                        ),
+                                        child: Image.network(
+                                          product['image'],
+                                          fit: BoxFit.cover,
+                                        ),
+                                      ),
+                                    ),
+                                    Padding(
+                                      padding: EdgeInsets.all(screenSize.width * 0.02),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            product['title'],
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: fontSize,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          SizedBox(height: 4),
+                                          Text(
+                                            '\$${product['price']}',
+                                            style: TextStyle(
+                                              color: Colors.green,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: fontSize,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            if (filteredProducts.isEmpty)
+              Center(child: CircularProgressIndicator())
+            else
+              SizedBox(
+                height: MediaQuery.of(context).size.height,
+                child: GridView.builder(
+                  padding: EdgeInsets.all(screenSize.width * 0.02),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: crossAxisCount,
+                    childAspectRatio: 3 / 2,
+                    crossAxisSpacing: screenSize.width * 0.02,
+                    mainAxisSpacing: screenSize.width * 0.02,
+                  ),
+                  itemCount: filteredProducts.length,
+                  itemBuilder: (ctx, index) {
+                    final product = filteredProducts[index];
+                    return Card(
+                      elevation: 5,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      child: InkWell(
+                        onTap: () {},
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Expanded(
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.vertical(
+                                  top: Radius.circular(15),
+                                ),
+                                child: Image.network(
+                                  product['image'],
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                            ),
+                            Padding(
+                              padding: EdgeInsets.all(screenSize.width * 0.02),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    product['title'],
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: fontSize,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    '\$${product['price']}',
+                                    style: TextStyle(
+                                      color: Colors.green,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: fontSize,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCategoryChip(String category) {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: MediaQuery.of(context).size.width * 0.02),
+      child: ChoiceChip(
+        label: Text(
+          category,
+          style: TextStyle(
+            fontSize: MediaQuery.of(context).size.width * 0.04,
+          ),
+        ),
+        selected: selectedCategory == category,
+        onSelected: (selected) {
+          setState(() {
+            selectedCategory = category;
+          });
+        },
+      ),
+    );
+  }
+}
